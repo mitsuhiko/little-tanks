@@ -1,0 +1,25 @@
+[package]
+name = "tanks"
+version = "0.0.1"
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
+
+[dependencies.glfw]
+git = "https://github.com/bjz/glfw-rs"
+
+[dependencies.cgmath]
+git = "https://github.com/bjz/cgmath-rs"
+
+[dependencies.gfx]
+git = "https://github.com/gfx-rs/gfx-rs"
+
+[dependencies.image]
+git = "https://github.com/PistonDevelopers/image"
+
+[dependencies.texture-packer]
+git = "https://github.com/PistonDevelopers/texture-packer"
+
+[dependencies.time]
+git = "https://github.com/rust-lang/time"
