@@ -86,8 +86,8 @@ fn run_everything() -> Res<()> {
         &program, map_mesh.get_mesh(), map_mesh.get_slice(), &state));
 
     let view: AffineMatrix3<f32> = Transform::look_at(
-        &Point3::new(15.0, 20.0, -15.0),
-        &Point3::new(15.0, 0.0, -9.0),
+        &Point3::new(18.0, 20.0, -12.0),
+        &Point3::new(18.0, 0.0, -9.0),
         &Vector3::unit_z(),
     );
     let proj = cgmath::perspective(cgmath::deg(45.0f32),
