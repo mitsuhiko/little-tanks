@@ -88,7 +88,7 @@ fn run_everything() -> Res<()> {
 
     let view = map.get_camera_view();
     let proj = cgmath::perspective(cgmath::deg(30.0f32),
-        engine.get_framebuffer_aspect(), 0.1, 1000.0);
+        engine.get_framebuffer_aspect(), 0.1, 100.0);
 
     let mut data = Params {
         transform: proj.mul_m(&view.mat).into_fixed(),

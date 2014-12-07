@@ -1,5 +1,4 @@
-#![feature(phase, if_let)]
-#![feature(macro_rules)]
+#![feature(phase, if_let, macro_rules)]
 
 extern crate serialize;
 extern crate gl;
