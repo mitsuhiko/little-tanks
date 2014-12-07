@@ -33,13 +33,20 @@ GLSL_150: b"
     #version 150 core
 
     in vec3 a_Pos;
+    in vec3 a_Normal;
     in vec2 a_TexCoord;
     out vec2 v_TexCoord;
+    out vec3 v_Normal;
+    out vec3 v_SunDirection;
+    out vec3 v_HalfVec;
 
     uniform mat4 u_Transform;
 
     void main() {
         v_TexCoord = a_TexCoord;
+        v_Normal = a_Normal;
+        v_SunDirection = normalize(vec3(0.4, 0.3, 1.0));
+        v_HalfVec = normalize(a_Pos + v_SunDirection);
         gl_Position = u_Transform * vec4(a_Pos, 1.0);
     }
 "
@@ -50,13 +57,47 @@ GLSL_150: b"
     #version 150 core
 
     in vec2 v_TexCoord;
+    in vec3 v_Normal;
+    in vec3 v_HalfVec;
+    in vec3 v_SunDirection;
     out vec4 o_Color;
 
     uniform sampler2D t_Color;
+
+    void directionalLight(in vec3 normal,
+                          in vec3 lightDir,
+                          in vec3 halfVec,
+                          in float shininess,
+                          in vec4 lightDiffuse,
+                          in vec4 lightSpecular,
+                          inout vec4 diffuse,
+                          inout vec4 specular)
+    {
+        float nDotVp; /* normal . light dir */
+        float nDotHv; /* normal . half vec */
+        float pf; /* power factor */
+        nDotVp = max(0.0, dot(normal, normalize(lightDir)));
+        nDotHv = max(0.0, dot(normal, halfVec));
+        pf = (nDotVp == 0.0) ? 0.0 : pow(nDotHv, shininess);
+        diffuse += lightDiffuse * nDotVp;
+        specular += lightSpecular * pf;
+    }
+
     void main() {
-        vec4 tex = texture(t_Color, v_TexCoord);
-        float blend = dot(v_TexCoord - vec2(0.5), v_TexCoord - vec2(0.5));
-        o_Color = mix(tex, vec4(0.0), blend*1.0);
+        vec4 darkness = vec4(0.1, 0.1, 0.1, 1.0);
+        vec4 ambient = vec4(0.4, 0.4, 0.4, 1.0);
+        vec4 sunColor = vec4(1.0, 1.0, 1.0, 0.3);
+        vec4 diffuse = vec4(0.0);
+        vec4 specular = vec4(0.0);
+
+        directionalLight(v_Normal, v_SunDirection, v_HalfVec,
+                         30.0, sunColor, vec4(0.0), diffuse,
+                         specular);
+                         
+        vec4 color = texture(t_Color, v_TexCoord);
+        color = color * clamp(darkness + ambient + diffuse, 0.0, 1.0);
+
+        o_Color = color;
     }
 "
 };
@@ -69,7 +110,7 @@ fn run_everything() -> Res<()> {
     let frame = engine.new_frame();
     let mut device = engine.new_device();
 
-    let image = try!(rl.load_image("tiles.png"));
+    let image = try!(rl.load_image("board.png"));
     let texture_map = try!(BasicTexture::from_image(&mut device, &image));
     let sampler = device.create_sampler(
         gfx::tex::SamplerInfo::new(gfx::tex::FilterMethod::Bilinear,

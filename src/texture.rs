@@ -34,6 +34,10 @@ pub trait Texture {
             offset_y: self.offset_y() + y,
         }
     }
+
+    fn safe_slice(&self, x: u16, y: u16, width: u16, height: u16) -> TextureSlice {
+        self.slice(x + 1, y + 1, width - 2, height - 2)
+    }
 }
 
 pub struct BasicTexture {

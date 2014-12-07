@@ -192,12 +192,17 @@ impl Tile {
     /// Return a texture slice for this tile from an atlas.  The atlas
     /// needs to be 8x8.
     pub fn get_texture_slice<'a>(&self, tex: &'a Texture) -> TextureSlice<'a> {
-        let idx = (self.get_gid() - 1) as u16;
-        let w = tex.width() / 8;
-        let h = tex.height() / 8;
-        let x = (idx % 8) * w;
-        let y = (idx / 8) * h;
-        tex.slice(x, y, w, h)
+        //let idx = (self.get_gid() - 1) as u16;
+        //let w = tex.width() / 8;
+        //let h = tex.height() / 8;
+        //let x = (idx % 8) * w;
+        //let y = (idx / 8) * h;
+        let idx = if self.height() == 0 { 0 } else { 1 };
+        let w = tex.width() / 4;
+        let h = tex.height() / 4;
+        let x = (idx % 4) * w;
+        let y = (idx / 4) * h;
+        tex.safe_slice(x, y, w, h)
     }
 
     /// get detail debug info
