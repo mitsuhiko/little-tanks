@@ -1,13 +1,14 @@
 use time;
 use cgmath;
 use cgmath::FixedArray;
-use cgmath::{Matrix, Point3, Vector3};
-use cgmath::{Transform, AffineMatrix3};
+use cgmath::Matrix;
 use gfx::{Device, DeviceHelper};
 use glfw::{Context, WindowEvent};
 use gfx;
 use glfw;
 
+use std::io::timer::sleep;
+use std::time::duration::Duration;
 use std::error::Error;
 
 use errors::Res;
@@ -85,12 +86,8 @@ fn run_everything() -> Res<()> {
     let batch: CubeBatch = try!(graphics.make_batch(
         &program, map_mesh.get_mesh(), map_mesh.get_slice(), &state));
 
-    let view: AffineMatrix3<f32> = Transform::look_at(
-        &Point3::new(18.0, 20.0, -12.0),
-        &Point3::new(18.0, 0.0, -9.0),
-        &Vector3::unit_z(),
-    );
-    let proj = cgmath::perspective(cgmath::deg(45.0f32),
+    let view = map.get_camera_view();
+    let proj = cgmath::perspective(cgmath::deg(30.0f32),
         engine.get_framebuffer_aspect(), 0.1, 1000.0);
 
     let mut data = Params {
@@ -124,6 +121,7 @@ fn run_everything() -> Res<()> {
         graphics.end_frame();
 
         engine.window.swap_buffers();
+        sleep(Duration::milliseconds(13));
     }
 
     Ok(())

@@ -2,12 +2,16 @@ use std::io;
 use std::num::FromPrimitive;
 use serialize::{json, Decodable};
 
+use cgmath::{Transform, AffineMatrix3};
+use cgmath::{Point3, Vector3};
 use gfx;
 use gfx::{Device, DeviceHelper, ToSlice};
 
 use errors::{Res, GameError};
 use meshutils::CubeMaker;
 use texture::{Texture, TextureSlice};
+
+static TILE_SIZE : f32 = 1.0;
 
 
 #[deriving(PartialEq, Eq, FromPrimitive, Copy, Show)]
@@ -262,22 +266,22 @@ impl Map {
         self.tiles[(y * self.width + x) as uint]
     }
 
+    pub fn get_camera_view(&self) -> AffineMatrix3<f32> {
+        let left = (self.width() as f32 / 2.0) * TILE_SIZE - TILE_SIZE / 2.0;
+        let top = (self.height() as f32 / 2.0) * TILE_SIZE - TILE_SIZE / 2.0;
+        Transform::look_at(
+            &Point3::new(left, left * 2.0, top - 2.0),
+            &Point3::new(left, 0.0, top),
+            &Vector3::unit_z(),
+        )
+    }
+
     pub fn create_mesh(&self, device: &mut gfx::GlDevice,
                        texture_map: &Texture) -> MapMesh {
-        let mut builder = MapMeshBuilder::new(device, texture_map);
-
-        for y in range(0, self.height()) {
-            for x in range(0, self.width()) {
-                let tile = self.get_tile(x, y);
-                if tile.is_ground() {
-                    builder.add_ground_tile(x, y);
-                } else if tile.height() > 0 {
-                    builder.add_box(x, y, tile.height(), tile);
-                }
-            }
-        }
-
-        builder.finish(self)
+        let mut builder = MapMeshBuilder::new(
+            device, texture_map, self, TILE_SIZE);
+        builder.build_mesh();
+        builder.finish()
     }
 }
 
@@ -304,46 +308,72 @@ impl<'a> MapMesh<'a> {
 
 struct MapMeshBuilder<'a> {
     device: &'a mut gfx::GlDevice,
+    map: &'a Map,
     texture_map: &'a (Texture + 'a),
+    tile_size: f32,
     cube_maker: CubeMaker,
 }
 
 impl<'a> MapMeshBuilder<'a> {
 
-    pub fn new(device: &'a mut gfx::GlDevice, texture_map: &'a Texture) -> MapMeshBuilder<'a> {
+    pub fn new(device: &'a mut gfx::GlDevice, texture_map: &'a Texture,
+               map: &'a Map, tile_size: f32) -> MapMeshBuilder<'a> {
         MapMeshBuilder {
             device: device,
+            map: map,
             texture_map: texture_map,
+            tile_size: tile_size,
             cube_maker: CubeMaker::new(),
         }
     }
 
     fn get_pos(&self, x: u16, y: u16, z: u16) -> (f32, f32, f32) {
-        (x as f32, z as f32, -(y as f32))
+        ((x as f32) * self.tile_size,
+         (z as f32) * self.tile_size,
+         ((self.map.height() - y - 1) as f32) * self.tile_size)
     }
 
     pub fn add_ground_tile(&mut self, x: u16, y: u16) {
         let pos = self.get_pos(x, y, 0);
         let tex = Tile::Ground.get_texture_slice(self.texture_map);
-        self.cube_maker.add_top_side(pos, 1.0, &tex);
+        self.cube_maker.add_top_side(pos, self.tile_size, &tex);
     }
 
     pub fn add_box(&mut self, x: u16, y: u16, height: u8, tile: Tile) {
         for z in range(1, height + 1) {
             let pos = self.get_pos(x, y, z as u16);
             let tex = tile.get_texture_slice(self.texture_map);
-            self.cube_maker.add_all_sides(pos, 1.0, &tex);
+            self.cube_maker.add_left_side(pos, self.tile_size, &tex);
+            self.cube_maker.add_right_side(pos, self.tile_size, &tex);
+            self.cube_maker.add_far_side(pos, self.tile_size, &tex);
+            self.cube_maker.add_near_side(pos, self.tile_size, &tex);
+            if z == height {
+                self.cube_maker.add_top_side(pos, self.tile_size, &tex);
+            }
         }
     }
 
-    pub fn finish(self, map: &Map) -> MapMesh {
+    pub fn build_mesh(&mut self) {
+        for y in range(0, self.map.height()) {
+            for x in range(0, self.map.width()) {
+                let tile = self.map.get_tile(x, y);
+                if tile.is_ground() {
+                    self.add_ground_tile(x, y);
+                } else if tile.height() > 0 {
+                    self.add_box(x, y, tile.height(), tile);
+                }
+            }
+        }
+    }
+
+    pub fn finish(self) -> MapMesh<'a> {
         let (vertex_data, index_data) = self.cube_maker.finish();
         let mesh = self.device.create_mesh(vertex_data.as_slice());
         let slice = self.device
             .create_buffer_static::<u16>(index_data.as_slice())
             .to_slice(gfx::PrimitiveType::TriangleList);
         MapMesh {
-            map: map,
+            map: self.map,
             mesh: mesh,
             slice: slice,
         }
